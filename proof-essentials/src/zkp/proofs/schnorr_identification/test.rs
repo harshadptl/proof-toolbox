@@ -5,11 +5,13 @@ mod test {
     use crate::zkp::{proofs::schnorr_identification, ArgumentOfKnowledge};
     use ark_ec::{AffineCurve, ProjectiveCurve};
     use ark_marlin::rng::FiatShamirRng;
+    use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
     use ark_std::rand::thread_rng;
     use ark_std::UniformRand;
     use blake2::Blake2s;
     use rand::{prelude::ThreadRng, Rng};
     use starknet_curve;
+    use crate::zkp::proofs::schnorr_identification::proof::Proof;
 
     type Curve = starknet_curve::Projective;
     type Point = starknet_curve::Affine;
@@ -60,6 +62,23 @@ mod test {
             Err(CryptoError::ProofVerificationError(String::from(
                 "Schnorr Identification"
             )))
+        );
+    }
+
+    #[test]
+    fn test_serde() {
+        let (mut rng, crs, sk, pk) = test_template();
+
+        let mut fs_rng = FS::from_seed(b"Initialised with some input");
+        let proof = Schnorr::prove(&mut rng, &crs, &pk, &sk, &mut fs_rng).unwrap();
+
+        let mut data = Vec::with_capacity(proof.serialized_size());
+        proof.serialize(&mut data).unwrap();
+
+        let proof_new: Proof<starknet_curve::Projective> = CanonicalDeserialize::deserialize(data.as_slice()).unwrap();
+        assert_eq!(
+            proof_new,
+            proof
         );
     }
 }
